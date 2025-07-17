@@ -3,9 +3,9 @@ from pathlib import Path
 from typing import Final
 
 import pdfplumber
-from docx import Document
+from docx import Document   # pip install python-docx
 
-MIN_CHARS: Final[int] = 50  # treat anything shorter as “no resume”
+MIN_CHARS: Final[int] = 50   # treat anything shorter as “no resume”
 
 def extract_text_from_file(path: str | Path) -> str:
     """
@@ -37,6 +37,6 @@ def extract_text_from_file(path: str | Path) -> str:
         logging.info("Resume extracted – %s characters", len(text))
         return text
 
-    except Exception as exc:
+    except Exception as exc:  # broad on purpose – we never want to crash the CLI
         logging.error("Failed to extract resume: %s", exc)
-        return ""
+        return "" 

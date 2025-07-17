@@ -7,23 +7,29 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <h1>Goal-to-Market Prompt Builder Test</h1>
-    <form id="uploadForm">
-        <label for="resume">Upload Resume (PDF, DOCX, TXT - max 2 pages):</label>
-        <input type="file" id="resume" name="resume" accept=".pdf,.docx,.txt" required>
+    <header>
+        <h1>Goal-to-Market Prompt Builder</h1>
+    </header>
+    <main>
+        <form id="uploadForm">
+            <label for="resume">Upload Resume (PDF, DOCX, TXT - max 2 pages):</label>
+            <input type="file" id="resume" name="resume" accept=".pdf,.docx,.txt" required>
+            
+            <label for="goal">5-Year Career Goal (min 10 characters):</label>
+            <input type="text" id="goal" name="goal" required>
+            
+            <label for="location">Location (City, ST format, e.g., Tucson, AZ):</label>
+            <input type="text" id="location" name="location" required>
 
-        <label for="goal">5-Year Career Goal (min 10 characters):</label>
-        <input type="text" id="goal" name="goal" required>
+            <!-- NEW: Email input field -->
+            <label for="email">Your Email Address (for the report):</label>
+            <input type="email" id="email" name="email" required>
 
-        <label for="location">Location (City, ST format, e.g., Tucson, AZ):</label>
-        <input type="text" id="location" name="location" required>
-
-        <button type="submit">Generate Prompt</button>
-    </form>
-
-    <div id="error" class="error"></div>
-    <pre id="promptOutput"></pre>
-
+            <button type="submit">Generate Roadmap</button>
+        </form>
+        <div id="error" class="error"></div>
+        <div id="roadmapCardContainer"></div>
+    </main>
     <script src="/static/js/script.js"></script>
 </body>
 </html>

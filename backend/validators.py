@@ -12,4 +12,4 @@ def validate_location(location: str) -> str:
     pattern = r'^[A-Za-z\s\-]{2,},\s*[A-Z]{2}$'
     if not re.match(pattern, location):
         raise ValueError('Location must be in the format "City, ST" (e.g., "Tucson, AZ")')
-    return location
+    return location 
