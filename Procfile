@@ -1,0 +1,1 @@
+web: gunicorn --worker-class thread --threads 4 app:app 
