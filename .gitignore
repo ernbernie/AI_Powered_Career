@@ -1,1 +1,18 @@
+# Sensitive and environment files
 .env
+
+# Python virtual environments
+.venv/
+venv/
+
+# Python cache and test cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Editor/OS files
+.DS_Store
+
+# Project-specific files to ignore
+all_code_dump.txt
+scrape_all_code.py
