@@ -3,33 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Goal-to-Market UI Test</title>
+    <title>Goal‑to‑Market UI</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <header>
-        <h1>Goal-to-Market Prompt Builder</h1>
-    </header>
-    <main>
-        <form id="uploadForm">
-            <label for="resume">Upload Resume (PDF, DOCX, TXT - max 2 pages):</label>
-            <input type="file" id="resume" name="resume" accept=".pdf,.docx,.txt" required>
-            
-            <label for="goal">5-Year Career Goal (min 10 characters):</label>
-            <input type="text" id="goal" name="goal" required>
-            
-            <label for="location">Location (City, ST format, e.g., Tucson, AZ):</label>
-            <input type="text" id="location" name="location" required>
+<header>
+    <h1>Goal‑to‑Market Prompt Builder</h1>
+</header>
 
-            <!-- NEW: Email input field -->
-            <label for="email">Your Email Address (for the report):</label>
-            <input type="email" id="email" name="email" required>
+<main>
+    <!-- ============= 1. INPUT FORM (NO E‑MAIL) ============= -->
+    <form id="uploadForm">
+        <label for="resume">Upload Resume (PDF, DOCX, TXT – max 2 pages):</label>
+        <input type="file" id="resume" name="resume" accept=".pdf,.docx,.txt" required>
 
-            <button type="submit">Generate Roadmap</button>
-        </form>
-        <div id="error" class="error"></div>
-        <div id="roadmapCardContainer"></div>
-    </main>
-    <script src="/static/js/script.js"></script>
+        <label for="goal">5‑Year Career Goal (min 10 characters):</label>
+        <input type="text" id="goal" name="goal" required>
+
+        <label for="location">Location (City, ST e.g. “Tucson, AZ”):</label>
+        <input type="text" id="location" name="location" required>
+
+        <button type="submit">Generate Roadmap</button>
+    </form>
+
+    <div id="error" class="error"></div>
+    <div id="roadmapCardContainer"></div>
+
+    <!-- ============= 2. EMAIL MODAL ============= -->
+    <div id="emailModal" class="modal hidden">
+        <div class="modal‑content">
+            <p>✅ Your market‑intelligence report is ready.<br>
+               Enter an email address and we’ll send it right away.</p>
+            <input type="email" id="emailInput" placeholder="your@email.com">
+            <button id="sendReportBtn">Send Report</button>
+            <p id="emailStatus" class="small‑text"></p>
+        </div>
+    </div>
+</main>
+
+<script src="/static/js/script.js"></script>
 </body>
 </html>

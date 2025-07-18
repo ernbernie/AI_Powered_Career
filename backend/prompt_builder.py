@@ -2,105 +2,131 @@
 import logging
 import textwrap
 
-MAX_RESUME_CHARS = 3000  # hard cap to keep the prompt ≤ GPT-4 limits
+MAX_RESUME_CHARS = 3000  # hard cap to keep the prompt ≤ GPT‑4 limits
 
-def build_career_roadmap_prompt(goal: str, location: str, resume_text: str | None = None) -> str:
+
+def build_career_roadmap_prompt(
+    goal: str,
+    location: str,
+    resume_text: str | None = None,
+) -> str:
+    """
+    Build the system/user prompt that instructs the LLM to return a five‑year
+    career roadmap as JSON. Key principles:
+        • Difficulty calibration (Easy / Moderate / Ambitious)
+        • Hyper‑personalization to résumé details
+        • Credential‑centric guidance (no degrees)
+        • Strong action‑verb style
+        • No location‑awareness mandate
+    The JSON schema remains unchanged, so downstream parsing still works.
+    """
     logging.info("Building roadmap prompt…")
 
+    # ——— System / role prompt ———
     chunks: list[str] = [
-        textwrap.dedent(f"""
-            You are **Strat-AI**, an elite, data-driven career strategist. Your sole function is to perform a rigorous gap analysis between a user's resume and their stated goal. You are meticulous and hyper-realistic. Every single goal you propose must be directly justified by a specific detail from the user's resume and location. You do not give generic advice.
+        textwrap.dedent(
+            f"""
+            You are **Strat‑AI**, an elite, data‑driven career strategist.
+            Your sole function is to perform a rigorous gap analysis between a
+            user's résumé and their stated goal. You are meticulous and
+            hyper‑realistic—every milestone you propose must be directly
+            justified by a specific résumé detail. Generic advice is forbidden.
 
             Context:
-            - User's 5‑year goal: "{goal}"
-            - User's location:   "{location}"
-        """).strip()
+            - User’s 5‑year goal: "{goal}"
+            - User’s location :  "{location}"
+            """
+        ).strip()
     ]
 
+    # ——— Optional résumé block ———
     if resume_text:
-        # Escape triple quotes to prevent f-string issues
+        # Escape embedded triple quotes to keep the f‑string intact
         safe_resume = resume_text.replace('"""', '\\"""')
         resume_chunk = textwrap.indent(safe_resume, "    ")
-        chunks.append(
-            "- User's resume:\n" +
-            resume_chunk
-        )
+        chunks.append("- User’s résumé:\n" + resume_chunk)
 
-    # Updated instructions with new JSON schema including SMART breakdown
-    chunks.append(textwrap.dedent("""
-        Instructions:
-        1. Analyze and Identify Gaps: First, scrutinize the user's resume and identify the top 3-5 critical skill, certification, or experience gaps between their current state and their 5-year goal.
-        2. Plan Backwards to Close Gaps: Plan backwards from Year 5. Each `year_goal` must be a logical milestone that explicitly closes one of the gaps you identified.
-        3. Justify Year 1 Quarterly Goals: For Year 1, create exactly four distinct quarterly goals. Each `goal` must provide a brief summary, and include a detailed SMART breakdown.
-        4. JSON Schema: Return **only** valid JSON matching this structure:
-        {
-          "five_year_goal": "...",
-          "location": "...",
-          "yearly_goals": [
-            {"year": 5, "year_goal": "..."},
-            {"year": 4, "year_goal": "..."},
-            {"year": 3, "year_goal": "..."},
-            {"year": 2, "year_goal": "..."},
+    # ——— Task instructions & rules ———
+    chunks.append(
+        textwrap.dedent(
+            """
+            Instructions:
+            1. Difficulty Check ► Assess how demanding the 5‑year goal is
+               compared with the résumé. Internally label it “Easy,” “Moderate,”
+               or “Ambitious.”
+               • Easy      → adopt a measured, low‑stress pace.
+               • Moderate  → keep milestones challenging yet comfortable.
+               • Ambitious → engineer an accelerated, high‑intensity progression
+                 that remains realistic.
+
+            2. Gap Diagnostic ► Pinpoint the 3‑5 most critical gaps (skills,
+               certifications, or experiences) separating the user from the
+               5‑year goal.
+
+            3. Reverse‑Engineer ► Starting at Year 5 and moving backward, craft
+               one clear yearly milestone per year that explicitly closes (or
+               substantially narrows) a gap from Step 2.
+
+            4. Quarter‑One Focus ► For **Year 1**, create **exactly four**
+               quarterly goals.
+               • Each `goal` begins by citing a concrete résumé detail
+                 (“Building on your Network+ …”).
+               • Provide a detailed SMART breakdown (`S`, `M`, `A`, `R`, `T`)
+                 for every quarter.
+
+            5. JSON‑Only Output ► Return nothing but valid JSON that conforms
+               *exactly* to the schema below. Do **not** wrap it in Markdown,
+               code fences, or prose.
+
+            JSON schema (do not alter keys or nesting):
             {
-              "year": 1,
-              "year_goal": "...",
-              "quarterly_smart_goals": [
+              "five_year_goal": "...",
+              "location": "...",
+              "yearly_goals": [
+                {"year": 5, "year_goal": "..."},
+                {"year": 4, "year_goal": "..."},
+                {"year": 3, "year_goal": "..."},
+                {"year": 2, "year_goal": "..."},
                 {
-                  "quarter": "Q1",
-                  "goal": "A brief summary of the quarterly goal.",
-                  "smart": {
-                    "S": "Specific: A detailed explanation of the specific task.",
-                    "M": "Measurable: How progress will be measured.",
-                    "A": "Achievable: Why this goal is achievable.",
-                    "R": "Relevant: How this goal is relevant to the 5-year plan.",
-                    "T": "Time-bound: The specific deadline for this goal."
-                  }
-                },
-                {
-                  "quarter": "Q2",
-                  "goal": "A brief summary of the quarterly goal.",
-                  "smart": {
-                    "S": "Specific: A detailed explanation of the specific task.",
-                    "M": "Measurable: How progress will be measured.",
-                    "A": "Achievable: Why this goal is achievable.",
-                    "R": "Relevant: How this goal is relevant to the 5-year plan.",
-                    "T": "Time-bound: The specific deadline for this goal."
-                  }
-                },
-                {
-                  "quarter": "Q3",
-                  "goal": "A brief summary of the quarterly goal.",
-                  "smart": {
-                    "S": "Specific: A detailed explanation of the specific task.",
-                    "M": "Measurable: How progress will be measured.",
-                    "A": "Achievable: Why this goal is achievable.",
-                    "R": "Relevant: How this goal is relevant to the 5-year plan.",
-                    "T": "Time-bound: The specific deadline for this goal."
-                  }
-                },
-                {
-                  "quarter": "Q4",
-                  "goal": "A brief summary of the quarterly goal.",
-                  "smart": {
-                    "S": "Specific: A detailed explanation of the specific task.",
-                    "M": "Measurable: How progress will be measured.",
-                    "A": "Achievable: Why this goal is achievable.",
-                    "R": "Relevant: How this goal is relevant to the 5-year plan.",
-                    "T": "Time-bound: The specific deadline for this goal."
-                  }
+                  "year": 1,
+                  "year_goal": "...",
+                  "quarterly_smart_goals": [
+                    {
+                      "quarter": "Q1",
+                      "goal": "A brief summary of the quarterly goal.",
+                      "smart": {
+                        "S": "Specific: ...",
+                        "M": "Measurable: ...",
+                        "A": "Achievable: ...",
+                        "R": "Relevant: ...",
+                        "T": "Time‑bound: ..."
+                      }
+                    },
+                    { "quarter": "Q2", ... }, { "quarter": "Q3", ... },
+                    { "quarter": "Q4", ... }
+                  ]
                 }
               ]
             }
-          ]
-        }
 
-        Rules:
-        - Hyper-Personalization Mandate: Every quarterly goal for Year 1 must begin by referencing a specific detail from the user's resume. No exceptions. A generic goal like "Obtain a certification" is unacceptable. It must be "Leveraging your `CompTIA Security+`, you will now pursue the `CompTIA CySA+` to build on your security foundation."
-        - Location-Awareness: Integrate the user's location (`Tucson, AZ`) where relevant, such as suggesting specific local networking events, companies, or regional industry trends.
-        - No Generic Verbs: Avoid vague verbs like "learn," "improve," or "work on." Use concrete action verbs like "implement," "deploy," "master," "achieve," "attain," or "lead."
-        - JSON only, no markdown or prose.
-        - If not enough details are available in the resume, avoid overcompensating and play it safe; do the best you can with what you have but don’t squeeze juice out of it if it’s not there.
-    """).strip())
+            Rules:
+            - **Hyper‑Personalization** Every Year 1 quarterly goal starts with
+              a résumé reference and shows a direct, traceable line to the
+              5‑year objective.
+            - **Credential‑Centric** Suggest certifications, exams, workshops,
+              bootcamps, or industry events—**never** college or university
+              degrees.
+            - **Action Verbs Only** Ban vague verbs (“learn,” “work on”).
+              Use concrete operators: implement, deploy, architect, lead,
+              attain, certify, etc.
+            - **Difficulty Coherence** Milestones must align with the
+              Easy/Moderate/Ambitious label from Step 1.
+            - **Safety Valve** If résumé details are sparse, deliver
+              conservative, evidence‑based recommendations rather than
+              speculative filler.
+            """
+        ).strip()
+    )
 
     prompt = "\n\n".join(chunks)
     logging.info("Prompt built successfully.")

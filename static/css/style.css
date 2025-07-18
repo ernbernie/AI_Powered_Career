@@ -270,3 +270,12 @@ button:hover {
         background: rgba(0, 0, 0, 0.3);
     }
 }
+
+/* simple modal */
+.modal { position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:100; }
+.modal.hidden { display:none; }
+.modal-content, .modal .modal‑content {
+    background:rgba(255,255,255,0.1); backdrop-filter:blur(12px);
+    padding:2rem 2.5rem; border-radius:18px; text-align:center; max-width:360px; width:90%;
+}
+.small-text { font-size:.875rem; margin-top:.5rem; }

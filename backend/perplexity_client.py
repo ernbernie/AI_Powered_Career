@@ -1,59 +1,56 @@
 # backend/perplexity_client.py
-import os
-import logging
-import requests
-import json # Import json for detailed error logging
+import os, logging, requests, json
+from dotenv import load_dotenv
+load_dotenv()
 
-def call_perplexity_api(prompt: str) -> str:
-    """
-    Sends a prompt to the Perplexity API and returns the response.
-    """
-    api_key = os.getenv("PERPLEXITY_API_KEY")
-    if not api_key:
-        logging.error("PERPLEXITY_API_KEY environment variable not set")
-        return "Error: Perplexity API key not configured."
+API_KEY = os.getenv("PERPLEXITY_API_KEY")
+if not API_KEY:
+    raise RuntimeError("PERPLEXITY_API_KEY missing")
 
-    url = "https://api.perplexity.ai/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
-    }
-    
+HEADERS = {
+    "Authorization": f"Bearer {API_KEY}",
+    "Content-Type": "application/json"
+}
+
+def call_perplexity_api(system_prompt: str) -> str:
+    """
+    system_prompt already contains location, resume + roadmap details.
+    """
     payload = {
-        # FIX: Updated to the correct and most appropriate model name.
         "model": "sonar-deep-research",
         "messages": [
-            {"role": "user", "content": prompt}
+            {
+                "role": "system",
+                "content": system_prompt
+            },
+            {
+                "role": "user",
+                "content": (
+                    "Generate the market‑intelligence report exactly as instructed. "
+                    "Return ONLY the final report in Markdown, starting with "
+                    "`# Market Intelligence Report`."
+                )
+            }
         ],
-        "max_tokens": 4096,
-        "temperature": 0.7 
+        "max_tokens": 8000,
+        "temperature": 0.3
     }
-    
-    logging.info("Sending prompt to Perplexity...")
-    
+
+    logging.info("Calling Perplexity (job)…")
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=300)
-        # This will raise an HTTPError if the HTTP request returned an unsuccessful status code
-        response.raise_for_status()
-        
-        result = response.json()
-        content = result["choices"][0]["message"]["content"]
-        
-        logging.info(f"Perplexity response received: {len(content)} characters")
+        r = requests.post(
+            "https://api.perplexity.ai/chat/completions",
+            headers=HEADERS,
+            json=payload,
+            timeout=(10, 480)   # 10 s connect timeout, 480 s read timeout
+        )
+        r.raise_for_status()
+        content = r.json()['choices'][0]['message']['content']
+        logging.info("Perplexity returned %d chars", len(content))
         return content
-        
-    except requests.exceptions.HTTPError as http_err:
-        # This enhanced logging will now catch any new errors.
-        logging.error(f"HTTP error occurred: {http_err}")
-        logging.error(f"Response status code: {http_err.response.status_code}")
-        try:
-            error_details = http_err.response.json()
-            logging.error(f"Perplexity API Error Details: {json.dumps(error_details, indent=2)}")
-            return f"Error from Perplexity API: {error_details.get('error', {}).get('message', 'Unknown error')}"
-        except json.JSONDecodeError:
-            logging.error(f"Raw error response: {http_err.response.text}")
-            return f"Error communicating with Perplexity API. Raw response: {http_err.response.text}"
-            
-    except Exception as e:
-        logging.error(f"An unexpected error occurred: {e}")
-        return "An unexpected error occurred while calling Perplexity."
+    except requests.exceptions.HTTPError as e:
+        logging.error("Perplexity HTTP error: %s", e.response.text)
+        raise
+    except Exception:
+        logging.exception("Perplexity call failed")
+        raise

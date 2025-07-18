@@ -1,64 +1,119 @@
-document.getElementById('uploadForm').addEventListener('submit', async function(event) {
+/* static/js/script.js */
+
+/* ---------- 1. FORM SUBMIT & ROADMAP RENDER (Existing Code) ---------- */
+document.getElementById('uploadForm').addEventListener('submit', async function (event) {
     event.preventDefault();
-    const formData = new FormData(this);
-    const errorDiv = document.getElementById('error');
-    const outputContainer = document.getElementById('roadmapCardContainer');
+    const formData  = new FormData(this);
+    const errorDiv  = document.getElementById('error');
+    const outputDiv = document.getElementById('roadmapCardContainer');
 
     errorDiv.textContent = '';
-    outputContainer.innerHTML = '<p>Loading roadmap...</p>';
+    outputDiv.innerHTML  = '<p>Loading roadmap…</p>';
 
-    // Client-side validation
-    const resume = document.getElementById('resume').files[0];
-    if (!resume) {
-        errorDiv.textContent = 'Please upload a resume.';
-        outputContainer.innerHTML = '';
-        return;
-    }
-    if (resume.size > 500 * 1024) {
-        errorDiv.textContent = 'Resume file too large (max 500KB).';
-        outputContainer.innerHTML = '';
-        return;
-    }
-    const goal = document.getElementById('goal').value.trim();
-    if (goal.length < 10) {
-        errorDiv.textContent = 'Goal must be at least 10 characters.';
-        outputContainer.innerHTML = '';
-        return;
-    }
-    const location = document.getElementById('location').value.trim();
+    /* ----- client‑side validation ----- */
+    const resume   = formData.get('resume');
+    const goal     = formData.get('goal').trim();
+    const location = formData.get('location').trim();
     const locRegex = /^[A-Za-z\s\-]{2,},\s*[A-Z]{2}$/;
-    if (!locRegex.test(location)) {
-        errorDiv.textContent = 'Location must be in "City, ST" format.';
-        outputContainer.innerHTML = '';
-        return;
-    }
+
+    if (!resume)              { errorDiv.textContent = 'Please upload a resume.'; return; }
+    if (resume.size > 500*1024){ errorDiv.textContent = 'Resume too large (max 500 KB).'; return; }
+    if (goal.length < 10)     { errorDiv.textContent = 'Goal must be at least 10 characters.'; return; }
+    if (!locRegex.test(location)){ errorDiv.textContent = 'Location must be in "City, ST" format.'; return; }
 
     try {
-        const response = await fetch('/generate_prompt', {
-            method: 'POST',
-            body: formData
-        });
-        const data = await response.json();
-        outputContainer.innerHTML = '';
+        const res  = await fetch('/generate_prompt', { method:'POST', body: formData });
+        const data = await res.json();
+        outputDiv.innerHTML = '';
 
-        if (data.error) {
-            errorDiv.textContent = data.error;
-        } else {
-            try {
-                const roadmapData = JSON.parse(data.roadmap);
-                renderRoadmap(formatRoadmapData(roadmapData));
-            } catch (e) {
-                errorDiv.textContent = 'Error parsing roadmap data.';
-                console.error('JSON parsing error:', e, 'Raw data:', data.roadmap);
-            }
-        }
+        if (data.error) throw new Error(data.error);
+
+        /* ----- roadmap render ----- */
+        const roadmapObj = JSON.parse(data.roadmap);
+        renderRoadmap(formatRoadmapData(roadmapObj));
+
+        /* ----- NEW: start polling for the market intelligence report ----- */
+        window.currentJobId = data.job_id; // Stash job_id globally
+        if (window.pollInterval) clearInterval(window.pollInterval); // Clear any old timers
+        window.pollInterval = setInterval(() => pollReportStatus(data.job_id), 4000); // Poll every 4s
+
     } catch (err) {
-        outputContainer.innerHTML = '';
-        errorDiv.textContent = 'Error connecting to server. Please try again.';
-        console.error('Fetch error:', err);
+        outputDiv.innerHTML = '';
+        errorDiv.textContent = err.message || 'Server error – try again.';
+        console.error(err);
     }
 });
 
+
+/* ---------- 2. POLLING & MODAL DISPLAY (NEW LOGIC) ---------- */
+async function pollReportStatus(jobId) {
+    try {
+        const res = await fetch(`/report_status?id=${jobId}`);
+        if (!res.ok) { // Handle server errors during polling
+            console.error(`Polling failed with status: ${res.status}`);
+            clearInterval(window.pollInterval);
+            return;
+        }
+        const data = await res.json();
+
+        console.log(`Polling job ${jobId}, status: ${data.status}`);
+
+        if (data.status === 'ready') {
+            clearInterval(window.pollInterval); // Stop polling
+            document.getElementById('emailModal').classList.remove('hidden'); // Show the modal
+        } else if (data.status === 'error') {
+            clearInterval(window.pollInterval); // Stop polling on error
+            // Optionally, show an error message to the user
+            document.getElementById('error').textContent = 'Could not generate market report. Please try again.';
+        }
+        // If status is 'running' or 'sent', do nothing and let the polling continue or timeout naturally
+    } catch (err) {
+        console.error('Error during polling:', err);
+        clearInterval(window.pollInterval); // Stop polling on network error
+    }
+}
+
+
+/* ---------- 3. SEND REPORT BUTTON HANDLER (NEW LOGIC) ---------- */
+document.getElementById('sendReportBtn').addEventListener('click', async function() {
+    const emailInput = document.getElementById('emailInput');
+    const email = emailInput.value.trim();
+    const emailStatus = document.getElementById('emailStatus');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Simple email validation regex
+
+    if (!emailRegex.test(email)) {
+        emailStatus.textContent = 'Please enter a valid email address.';
+        return;
+    }
+
+    emailStatus.textContent = 'Sending...';
+    this.disabled = true; // Disable button to prevent multiple clicks
+
+    try {
+        const res = await fetch('/send_report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: window.currentJobId, email: email })
+        });
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        if (data.status === 'sent') {
+            emailStatus.textContent = '✅ Report sent! Check your inbox.';
+            // Hide the modal after a short delay
+            setTimeout(() => {
+                document.getElementById('emailModal').classList.add('hidden');
+            }, 3000);
+        }
+    } catch (err) {
+        emailStatus.textContent = `Error: ${err.message}`;
+        this.disabled = false; // Re-enable button on failure
+    }
+});
+
+
+/* ---------- 4. ROADMAP FORMATTING & RENDERING (Existing Code, No Changes) ---------- */
 /**
  * Formats and validates the roadmap data to prevent rendering errors.
  * @param {Object} data - Raw roadmap data from OpenAI
@@ -70,8 +125,6 @@ function formatRoadmapData(data) {
         location: data.location || 'Location not specified.',
         yearly_goals: Array.isArray(data.yearly_goals) ? data.yearly_goals : []
     };
-
-    // FIX: Corrected typo from 'yearsly_goals' to 'yearly_goals'
     formatted.yearly_goals = formatted.yearly_goals
         .sort((a, b) => (b.year || 0) - (a.year || 0))
         .map(year => {
@@ -89,7 +142,6 @@ function formatRoadmapData(data) {
             }
             return yearData;
         });
-
     return formatted;
 }
 

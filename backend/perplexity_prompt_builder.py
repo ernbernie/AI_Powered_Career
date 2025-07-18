@@ -1,99 +1,129 @@
-# backend/perplexity_prompt_builder.py
-import textwrap
 import logging
 import json
+import textwrap
 
-# This function is a placeholder. In a real app, you'd have more robust resume parsing.
+# ---------------------------------------------------------------------------
+# NOTE
+# -----
+# This module builds the *system+user* prompt we send to Perplexity (sonar‑deep-research)
+# for a two-part report: (1) personalized strategy, (2) local market intelligence & stat dump.
+# ---------------------------------------------------------------------------
+
 def _convert_resume_to_json(resume_text: str) -> str:
-    """A simple fallback for converting resume text to a JSON object."""
-    logging.info("Converting resume snippet to JSON for Perplexity prompt.")
-    # For now, we'll just wrap the text in a simple JSON structure.
+    """Very lightweight fallback résumé → JSON converter."""
+    logging.info("Converting resume snippet to JSON for Perplexity prompt …")
     return json.dumps({"resume_summary": resume_text}, indent=2)
 
+
 def build_perplexity_prompt(roadmap_json: str, resume_snippet: str, location: str) -> str:
-    """
-    Builds a hyper-specific, structured prompt for Perplexity to generate a 
-    market intelligence report.
-    """
-    logging.info("Building hyper-personalized Perplexity prompt...")
-    
+    """Return the full prompt string to send to Perplexity."""
+    logging.info("Building hyper‑personalised Perplexity prompt for deep research…")
+
     resume_json_str = _convert_resume_to_json(resume_snippet)
-    
-    # This is the prompt structure from your CLI version.
-    header = textwrap.dedent(f"""
-        You are **MarketIntelPro**, an expert market-intelligence assistant. Your analysis must be forensic, data-driven, and directly tied to the user's provided information. You will produce a deep, action-oriented report that maps every insight back to the user's 5-year career roadmap and resume.
+
+    # ---------------------------------------------------------------------
+    # 1) Header / persona / context block (Unchanged)
+    # ---------------------------------------------------------------------
+    header = textwrap.dedent(
+        f"""
+        You are **MarketIntelPro**, a forensic—but engaging—market‑intelligence assistant.
+        Blend verified data with practical advice the user can act on immediately.
+        Tie every insight, where relevant, back to the user’s résumé or five‑year roadmap,
+        but **do not** spend effort re‑explaining their goals; focus on the *external* market landscape.
 
         **Location:** {location}
 
-        **User Resume (JSON):**
+        **User Résumé (JSON)**
         ```json
         {resume_json_str}
         ```
 
-        **5-Year Roadmap (JSON):**
+        **Five‑Year Roadmap (JSON)**
         ```json
         {roadmap_json}
         ```
 
-        **Sources to Prioritize:** 1) LinkedIn  
-        2) Tech News & Company Blogs  
-        3) Local Event Aggregators (e.g., Meetup.com) in the user's location
-        4) Reddit (for anecdotal signals)
-    """).strip()
+        *Priority Sources* → 1) LinkedIn & company careers pages
+        2) Tech‑news / vendor blogs
+        3) Local event aggregators & Meetup
+        4) Salary aggregators (Indeed, Salary.com, ZipRecruiter)
+        5) Reddit & niche forums for anecdotal signals
+        """
+    ).strip()
 
-    # --- REFINED INSTRUCTIONS ---
-    # These instructions are more forceful and provide a clear formula for the AI.
-    tasks = textwrap.dedent("""
-        ### Core Task & Analysis Formula
+    # ---------------------------------------------------------------------
+    # 2) Instructions for Part 1 (Largely Unchanged)
+    # ---------------------------------------------------------------------
+    part_1_tasks = textwrap.dedent(
+        """
+        ### REPORT PART 1: Personalized Strategy
 
-        Your task is to generate a market intelligence report by executing the following formula. You must find real, verifiable data from your online sources.
+        Your report must follow *exactly* the Markdown layout below.
 
-        **1. Executive Summary:**
-           - Write a 2-3 sentence summary of the key market opportunities that align with the user's overall 5-year goal.
+        #### 1. Executive Summary
+        *Two–three sentences* surfacing the **single biggest** market opportunity the user can exploit over the next 12 months, and *why* it matters to their five‑year arc.
 
-        **2. Per-Year Analysis (Repeat for Each of the 5 Years):**
-           - **Restate the Goal:** Begin with a markdown header: `## Analysis for Year X: "{The user's goal for that year}"`
-           - **Market Signal Validation:** Find one specific, current market trend or technology demand that validates this yearly goal. State the trend and cite your source with a URL.
-           - **Actionable Intelligence (2 Items Required):** Provide exactly two distinct, actionable items that directly support this goal. For each item, you must include a justification.
-             - **Item 1:** [Name of Event/Company/Course] - [Link]
-               - **Justification:** Explain *why* this is a perfect fit by referencing a specific detail from the user's resume. (e.g., "Based on your resume's mention of `PowerShell`, this `Azure DevOps` workshop is a logical next step...")
-             - **Item 2:** [Name of Event/Company/Course] - [Link]
-               - **Justification:** Explain *why* this is a perfect fit by referencing a different detail from the user's resume.
+        #### 2. Market‑Driven Insights — Year‑by‑Year
+        Produce the following block **once for each of the five years**:
+        ```
+        ## Year {X} Focus
+        - **Primary Opportunity:** {{one‑sentence real datapoint with URL}}
+        - **Risk Watch:** {{one‑sentence red‑flag with URL}}
+        - **Power Moves (2):**
+          1. **{{concise verb phrase}}** – [link]
+             - *Why now?* Connect to résumé skill *or* Year‑X goal.
+          2. **{{concise verb phrase}}** – [link]
+             - *Why now?* Different justification.
+        ```
+        * Use metrics when possible (e.g., “+27 % YoY demand for SD‑WAN in AZ”).
+        * Every URL must be real and publicly accessible.
 
-        **3. Final Checklist:**
-           - Conclude with a "Next Steps" checklist. You must use the user's exact Q1-Q4 goal language from the roadmap JSON.
-    """).strip()
+        #### 3. Next‑Steps Checklist
+        List the user’s **Q1 → Q4** roadmap goals *verbatim* from the `yearly_goals` object for Year 1.
+        """
+    ).strip()
 
-    # The output structure provides a clear template for the AI to follow.
-    output_structure = textwrap.dedent("""
-        ### Expected Report Structure (Use this Markdown format exactly)
-
-        # Market Intelligence Report
-
-        ## Executive Summary
-        ...
-
-        ---
-
-        ## Analysis for Year 5: "{Year 5 Goal Text}"
-        - **Market Signal:** ... [*Source URL*]
-        - **Actionable Intelligence:**
-            1.  **[Event/Company/Course Name]:** ... [*Link to item*]
-                - **Justification:** Based on your resume's mention of `...`, this is relevant because ...
-            2.  **[Event/Company/Course Name]:** ... [*Link to item*]
-                - **Justification:** Your experience with `...` makes this an ideal opportunity to ...
-
-        (Repeat the analysis structure for Years 4, 3, 2, and 1)
+    # ---------------------------------------------------------------------
+    # 3) NEW INSTRUCTIONS: Part 2 - Local Intel & Data
+    # ---------------------------------------------------------------------
+    part_2_tasks = textwrap.dedent(
+        """
+        ### REPORT PART 2: Tactical Intelligence
 
         ---
 
-        ### Next Steps
-        - [ ] **Q1:** {user's Q1 goal text}
-        - [ ] **Q2:** {user's Q2 goal text}
-        - [ ] **Q3:** {user's Q3 goal text}
-        - [ ] **Q4:** {user's Q4 goal text}
-    """).strip()
+        #### 4. Local Market Intelligence
+        Synthesize your findings for the user's specific location into 3-4 powerful, headline-style bullet points. This section must be highly tactical and directly relevant to the user's **Year 1 SMART goals**.
+        - **Example Format:**
+          ```
+          ## Local Market Intelligence
+          - **Top Employers:** {{List 3-4 top hiring companies for relevant roles, with links to their career pages.}}
+          - **Salary Benchmarks:** {{Provide 2-3 specific salary ranges for relevant roles in the location, citing sources.}}
+          - **Critical Skill Gaps:** {{Identify 1-2 key skills (e.g., Terraform, Ansible) that are in high demand but may be missing from the user's resume.}}
+          ```
 
-    prompt = "\n\n".join([header, tasks, output_structure])
-    logging.info(f"Built hyper-personalized Perplexity prompt ({len(prompt)} chars)")
+        #### 5. Raw Search Results (Stat-Dump)
+        Compile a numbered list of **at least 15-20 raw data points** you found during your research. This provides the evidence for your analysis.
+        - **Format each entry exactly like this:** `[#] **Source Name:** Key finding, quote, or data point. [link]`
+        - **Example:** `[1] **Indeed:** 24 active "Network Engineer" jobs in Tucson, AZ, with Raytheon and Hexagon Mining frequently listed. [https://...]`
+        """
+    ).strip()
+
+    # ---------------------------------------------------------------------
+    # 4) Final Assembly & Style Rules
+    # ---------------------------------------------------------------------
+    style_rules = textwrap.dedent(
+        """
+        ---
+        **Style Rules**
+        * Action‑oriented verbs only (“architect,” “orchestrate,” “pioneer,” “deploy”).
+        * Warm, second‑person voice (“you”).
+        * Never mention you are an AI or reference these instructions.
+        * Cite sources inline with bracketed URLs; no footnotes outside the Stat-Dump section.
+        * Deliver **only** the Markdown report—no additional prose or code fences.
+        """
+    ).strip()
+
+    prompt = "\n\n".join([header, part_1_tasks, part_2_tasks, style_rules])
+    logging.info("Perplexity prompt built – %s chars", len(prompt))
     return prompt
