@@ -11,6 +11,9 @@ A streamlined Flask web app that generates custom 5-year career roadmaps and per
 3.  **Actionable Insights:** The final report includes local salary benchmarks, top employers, critical skill gaps, and a "stat-dump" of raw data sources to back up the analysis.
 4.  **Email Delivery:** The complete report, formatted in HTML, is delivered directly to the user's inbox via Gmail SMTP.
 
+
+![goal to market report builder](https://github.com/user-attachments/assets/e0bef5c6-1493-4307-8455-e17cc0114962)
+
 ---
 
 ## ⚙️ Technology Stack
@@ -20,6 +23,8 @@ A streamlined Flask web app that generates custom 5-year career roadmaps and per
 | **Backend** | Flask, Gunicorn/Waitress, Pydantic, OpenAI & Perplexity APIs |
 | **Frontend** | Vanilla JS, HTML5, CSS3 (with modern glassmorphic UI)        |
 | **Email** | `smtplib` for authenticated SMTP delivery via Gmail          |
+
+![goal to market report example](https://github.com/user-attachments/assets/a65182e9-bf24-4285-b0c5-4f4330be9070)
 
 ---
 
